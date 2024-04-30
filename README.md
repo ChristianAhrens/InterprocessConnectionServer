@@ -1,1 +1,3 @@
 # InterprocessConnectionServer
+
+... a super simple JUCE UI application to test a juce::InterprocessConnectionServer implementation regarding its received data...
