@@ -29,8 +29,6 @@ MainComponent::MainComponent()
     m_dataLogEditor->setMultiLine(true, false);
     addAndMakeVisible(m_dataLogEditor.get());
 
-    m_dataLogList.addArray( { "","", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "", "" , "" , "" , "" });
-
     m_connectionElmFlex = std::make_unique<juce::FlexBox>(juce::FlexBox::Direction::row,juce::FlexBox::Wrap::noWrap, juce::FlexBox::AlignContent::flexStart, juce::FlexBox::AlignItems::stretch, juce::FlexBox::JustifyContent::flexStart);
     m_connectionElmFlex->items = { 
         juce::FlexItem(*m_ipEditor.get()).withFlex(6),
@@ -78,11 +76,6 @@ void MainComponent::handleReceivedData(const juce::MemoryBlock& message)
 {
     if (m_dataLogEditor)
     {
-        m_dataLogList.remove(0);
-        juce::String stringyfiedMessage;
-        for (auto byte : message)
-            stringyfiedMessage << juce::String::toHexString(byte) << " ";
-        m_dataLogList.add(stringyfiedMessage);
 
         // AURA data testing
         ////////////////////
@@ -98,6 +91,9 @@ void MainComponent::handleReceivedData(const juce::MemoryBlock& message)
         if (message.isEmpty())
             return;
 
+        if (m_dataLogList.size() >= 128)
+            m_dataLogList.remove(127);
+
         auto packetId = ReadUint32(message.begin());
         if (packetId == 1 && message.getSize() == (4 * 4)) // listener pos, 3 float following
         {
@@ -109,9 +105,8 @@ void MainComponent::handleReceivedData(const juce::MemoryBlock& message)
             auto y = *reinterpret_cast<float*>(&iY);
             auto z = *reinterpret_cast<float*>(&iZ);
 
-            auto dl = juce::String() << " received listener pos: " << x << ";" << y << ";" << z;
-            m_dataLogList.remove(0);
-            m_dataLogList.add(stringyfiedMessage);
+            auto dl = juce::String() << "listener pos: " << x << ";" << y << ";" << z;
+            m_dataLogList.insert(0, dl);
         }
         else if (packetId == 2 && message.getSize() == (5 * 4)) // object pos, 1 int sourceId + 3 float following
         {
@@ -125,9 +120,15 @@ void MainComponent::handleReceivedData(const juce::MemoryBlock& message)
             auto y = *reinterpret_cast<float*>(&iY);
             auto z = *reinterpret_cast<float*>(&iZ);
 
-            auto dl = juce::String() << " received object pos (" << sourceId << "): " << x << ";" << y << ";" << z;
-            m_dataLogList.remove(0);
-            m_dataLogList.add(dl);
+            auto dl = juce::String() << "obj. pos (" << sourceId << "): " << x << ";" << y << ";" << z;
+            m_dataLogList.insert(0, dl);
+        }
+        else
+        {
+            juce::String stringyfiedMessage("unknown     : ");
+            for (auto byte : message)
+                stringyfiedMessage << juce::String::toHexString(byte) << " ";
+            m_dataLogList.insert(0, stringyfiedMessage);
         }
 
         m_dataLogEditor->setText(m_dataLogList.joinIntoString("\n"));
